@@ -1,18 +1,27 @@
-name: GitHub Actions Demo
+name: Go CI/CD Pipeline
 
-on: [push]
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
-  explore:
+  build_and_dockerize:
+    name: 🔨 Build & 🐳 Dockerize
     runs-on: ubuntu-latest
     steps:
-      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
-      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
-      - name: Check out repository code
-        uses: actions/checkout@v4
-      - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
-      - run: echo "🖥️ The workflow is now ready to test your code on the runner."
-      - name: List files in the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+#      - name: Download dependencies
+#        run: go mod download
+
+      - name: Build Go Binary
         run: |
-          ls ${{ github.workspace }}
-      - run: echo "Done!"
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -buildvcs=false -o main
