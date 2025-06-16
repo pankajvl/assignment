@@ -13,7 +13,7 @@ type task struct {
 func IdGen() func() int {
 	id := 0
 	return func() int {
-		id++
+		id+
 		return id
 	}
 }
