@@ -1,56 +1,103 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
-func hellohandler(w http.ResponseWriter, r *http.Request) {
-	_, err := fmt.Fprintf(w, "Im proper url")
-	if err != nil {
-		fmt.Fprintf(w, "%v\n", err)
+type Task struct {
+	ID          int    `json:"id"`
+	Description string `json:"description"`
+	Completed   bool   `json:"completed"`
+}
+
+func idGenerator() func() int {
+	id := 0
+	return func() int {
+		id++
+		return id
 	}
-
 }
 
-var m = make(map[int]string)
-var i int = 0
+var (
+	tasks     []Task
+	getNextID = idGenerator()
+)
 
-func addTask(w http.ResponseWriter, r *http.Request) {
-
-	defer r.Body.Close()
-	msg, _ := io.ReadAll(r.Body)
-	m[i] = string(msg)
-	i++
-
+func listTasksHandler(w http.ResponseWriter, r *http.Request) {
+	var pending []Task
+	for _, t := range tasks {
+		if !t.Completed {
+			pending = append(pending, t)
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(pending)
 }
 
-func getByID(w http.ResponseWriter, r *http.Request) {
-
-	defer r.Body.Close()
-	url := r.URL.Path
-	splited_path := strings.Split(url, "/")
-	ind := splited_path[len(splited_path)-1]
-	index, err := strconv.Atoi(ind)
-	if err != nil {
-		fmt.Fprintf(w, "%v\n", err)
+func addTaskHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Description string `json:"description"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&input)
+	if err != nil || input.Description == "" {
+		http.Error(w, "Invalid input", http.StatusBadRequest)
 		return
 	}
-	w.Write([]byte(m[index]))
+
+	newTask := Task{
+		ID:          getNextID(),
+		Description: input.Description,
+		Completed:   false,
+	}
+	tasks = append(tasks, newTask)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(newTask)
+}
+
+func completeTaskHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := strings.TrimPrefix(r.URL.Path, "/tasks/")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		return
+	}
+
+	for i := range tasks {
+		if tasks[i].ID == id {
+			tasks[i].Completed = true
+			fmt.Fprintf(w, "Task %d marked as completed\n", id)
+			return
+		}
+	}
+
+	http.Error(w, "Task not found", http.StatusNotFound)
 }
 
 func main() {
-	http.HandleFunc("/", hellohandler)
+	http.HandleFunc("/tasks", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			listTasksHandler(w, r)
+		case http.MethodPost:
+			addTaskHandler(w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	})
 
-	http.HandleFunc("/task", addTask)
-	http.HandleFunc("/task/{id}", getByID)
+	http.HandleFunc("/tasks/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPut {
+			completeTaskHandler(w, r)
+		} else {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	})
 
-	err := http.ListenAndServe(":8080", nil)
-
-	if err != nil {
-		fmt.Println("Not able to start server")
-	}
+	fmt.Println("Server started at http://localhost:8080")
+	http.ListenAndServe(":8080", nil)
 }
