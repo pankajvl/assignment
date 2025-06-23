@@ -24,7 +24,6 @@ jobs:
 
 #      - name: Download dependency
 #        run: go mod download
-
 #      - name: Build Go Binary
 #        run: |
 #          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -buildvcs=false -o main
