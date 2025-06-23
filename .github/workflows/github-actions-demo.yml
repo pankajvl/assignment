@@ -27,9 +27,10 @@ jobs:
 #      - name: Build Go Binary
 #        run: |
 #          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -buildvcs=false -o main
+      - name: Moving
+        run: cd Day_8/taskAPI
+
       - name: Run golangci- lint
-        run:
-          working-directory:  Day_8/taskAPI
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.1.6
