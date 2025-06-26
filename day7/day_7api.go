@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -40,8 +41,8 @@ func getByID(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "%v\n", err)
 		return
 	}
-	fmt.Fprintf(w, "%v\n", m[index])
-
+	w.Write([]byte(strconv.Itoa(index)))
+	w.WriteHeader(200)
 }
 
 func viewTask(w http.ResponseWriter, r *http.Request) {
